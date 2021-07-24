@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
-import { Alert, Button, Modal } from 'rsuite';
+import React, { useState, useRef } from 'react';
+import { Modal, Alert, Button } from 'rsuite';
 import AvatarEditor from 'react-avatar-editor';
-import ModalBody from 'rsuite/lib/Modal/ModalBody';
-import ModalFooter from 'rsuite/lib/Modal/ModalFooter';
-import ModalHeader from 'rsuite/lib/Modal/ModalHeader';
-import ModalTitle from 'rsuite/lib/Modal/ModalTitle';
 import { useModalState } from '../../misc/custom.hooks';
+import { useProfile } from '../../context/profile.context';
+import { database, storage } from '../../misc/firebase';
+import ProfileAvatar from '../ProfileAvatar';
 
 const fileInputTypes = '.png, .jpeg, .jpg';
 
@@ -15,7 +14,22 @@ const isValidFile = file => acceptedFileTypes.includes(file.type);
 const AvatarUploadBtn = () => {
   const { isOpen, open, close } = useModalState();
 
+  const getBlob = canvas =>
+    new Promise((resolve, reject) => {
+      canvas.toBlob(blob => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error('File Process error'));
+        }
+      });
+    });
+
+  const { profile } = useProfile();
+
   const [img, setImg] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const avatarEditorRef = useRef();
 
   const onFileInputChange = ev => {
     const currfiles = ev.target.files;
@@ -32,9 +46,45 @@ const AvatarUploadBtn = () => {
       }
     }
   };
+  const onUploadClick = async () => {
+    const canvas = avatarEditorRef.current.getImageScaledToCanvas();
+
+    setIsLoading(true);
+    try {
+      const blob = await getBlob(canvas);
+
+      const avatarFileRef = storage
+        .ref(`/profile/${profile.uid}`)
+        .child('avatar');
+
+      const uploadAvatarResult = await avatarFileRef.put(blob, {
+        cacheControl: `public,max-age=${3600 * 24 * 3}`,
+      });
+
+      const downloadUrl = await uploadAvatarResult.ref.getDownloadURL();
+
+      const userAvatarRef = database
+        .ref(`/profiles/${profile.uid}`)
+        .child('avatar');
+
+      userAvatarRef.set(downloadUrl);
+
+      setIsLoading(false);
+      Alert.info('Avatar has been uploaded', 4000);
+    } catch (err) {
+      setIsLoading(false);
+      Alert.error(err.message, 4000);
+    }
+  };
 
   return (
     <div className="mt-3 text-center">
+      <ProfileAvatar
+        src={profile.avatar}
+        name={profile.name}
+        className="width-200 height-200 img-fullsize font-huge"
+      />
+
       <div>
         <label
           htmlFor="avatar-upload"
@@ -51,13 +101,14 @@ const AvatarUploadBtn = () => {
         </label>
 
         <Modal show={isOpen} onHide={close}>
-          <ModalHeader>
-            <ModalTitle>Adjust and upload new avatar</ModalTitle>
-          </ModalHeader>
-          <ModalBody>
+          <Modal.Header>
+            <Modal.Title>Adjust and upload new avatar</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
             <div className="d-flex justify-center align-items-center h-100">
               {img && (
                 <AvatarEditor
+                  ref={avatarEditorRef}
                   image={img}
                   width={200}
                   height={200}
@@ -67,12 +118,17 @@ const AvatarUploadBtn = () => {
                 />
               )}
             </div>
-          </ModalBody>
-          <ModalFooter>
-            <Button block appearance="ghost">
+          </Modal.Body>
+          <Modal.Footer>
+            <Button
+              block
+              appearance="ghost"
+              onClick={onUploadClick}
+              disabled={isLoading}
+            >
               Upload new avatar
             </Button>
-          </ModalFooter>
+          </Modal.Footer>
         </Modal>
       </div>
     </div>
