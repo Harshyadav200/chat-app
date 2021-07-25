@@ -7,3 +7,13 @@ export function getNameInitials(name) {
 
   return splitName[0][0];
 }
+
+export function transFormToArrayWithId(snapVal) {
+  // eslint-disable-next-line arrow-body-style
+  return snapVal
+    ? // eslint-disable-next-line arrow-body-style
+      Object.keys(snapVal).map(roomId => {
+        return { ...snapVal[roomId], id: roomId };
+      })
+    : [];
+}
