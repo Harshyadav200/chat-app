@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useParams } from 'react-router';
-import { Alert, Button, Icon, Modal, Uploader } from 'rsuite';
-import InputGroupButton from 'rsuite/lib/InputGroup/InputGroupButton';
+import { Alert, Button, Icon, InputGroup, Modal, Uploader } from 'rsuite';
 import { useModalState } from '../../../misc/custom.hooks';
 import { storage } from '../../../misc/firebase';
 
@@ -58,9 +57,9 @@ const AttachmentBtnModal = ({ afterUpload }) => {
 
   return (
     <>
-      <InputGroupButton onClick={open}>
+      <InputGroup.Button onClick={open}>
         <Icon icon="attachment" />
-      </InputGroupButton>
+      </InputGroup.Button>
       <Modal show={isOpen} onHide={close}>
         <Modal.Header>
           <Modal.Title>Upload files</Modal.Title>
